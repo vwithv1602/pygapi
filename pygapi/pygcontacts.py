@@ -60,6 +60,7 @@ def fetch_contacts():
     mobile = contact.get("phoneNumbers")[0].get("canonicalForm")
     contacts.append({"resourceName":contact.get("resourceName"),"name":name,"mobile":mobile})
   return contacts
+
 # fetch contact by mobile number
 def get_contact_by_number(number):
   contacts = fetch_contacts()
@@ -72,7 +73,6 @@ def get_contact_by_number(number):
     contact_query = people_service.people().get(resourceName=resourceName,personFields="names,phoneNumbers")
     contact_result = contact_query.execute()
     return contact_result
-
 # create new contact
 # format: contact = {"name":"contact name","mobile":"1234567890"}
 # usage:
