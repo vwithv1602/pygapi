@@ -5,7 +5,7 @@ from oauth2client.client import OAuth2WebServerFlow
 from oauth2client import tools
 from globalconstants import *
 import frappe
-from frappe import vlog
+from .vlog import vwrite
 # Note. If you need to change permissions like scope, you need to delete info.dat file to update the new permissions
 
 # Helpful URLs
@@ -56,9 +56,14 @@ def fetch_contacts():
   contacts_result = contacts_query.execute()
   contacts = []
   for contact in contacts_result.get("connections"):
-    name = contact.get("names")[0].get("displayName")
-    mobile = contact.get("phoneNumbers")[0].get("canonicalForm")
-    contacts.append({"resourceName":contact.get("resourceName"),"name":name,"mobile":mobile})
+    try:
+      name = contact.get("names")[0].get("displayName")
+      mobile = contact.get("phoneNumbers")[0].get("canonicalForm")
+      contacts.append({"resourceName":contact.get("resourceName"),"name":name,"mobile":mobile})
+    except Exception, e:
+      vwrite("Exception raised in fetch_contacts")
+      vwrite(e.message)
+      vwrite(contact)
   return contacts
 
 # fetch contact by mobile number
@@ -66,7 +71,9 @@ def get_contact_by_number(number):
   contacts = fetch_contacts()
   resourceName = None
   for contact in contacts:
-    mobile_formatted = contact.get("mobile")[3:len(contact.get("mobile"))]
+    mobile_formatted = ""
+    if contact.get("mobile"):
+      mobile_formatted = contact.get("mobile")[3:len(contact.get("mobile"))]
     if(contact.get("mobile")==number or mobile_formatted==number):
       resourceName = contact.get("resourceName")
   if resourceName:
@@ -99,3 +106,15 @@ def update_contact(contact):
     updatedContact = people_service.people().updateContact(resourceName=resourceName,updatePersonFields="names",body=contactToUpdate).execute()
   return updatedContact
 
+@frappe.whitelist()
+def create_contact_if_not_exists(mobile,lead_name=None):
+  if not lead_name:
+    lead_name = mobile
+  contact = get_contact_by_number(mobile)
+  if not contact:
+    new_contact = {"name":lead_name,"mobile":mobile}
+    try:
+      create_contact(new_contact)
+    except Exception, e:
+      vwrite("Exception raised in create_contact_if_not_exists for contact: %s (%s)" % (mobile,lead_name))
+      vwrite(e.message)
