@@ -5,7 +5,7 @@ from oauth2client.client import OAuth2WebServerFlow
 from oauth2client import tools
 from globalconstants import *
 import frappe
-
+from frappe import vlog
 # Note. If you need to change permissions like scope, you need to delete info.dat file to update the new permissions
 
 # Helpful URLs
@@ -37,7 +37,7 @@ FLOW = OAuth2WebServerFlow(
 # installed application flow. The Storage object will ensure that,
 # if successful, the good Credentials will get written back to a
 # file.
-storage = Storage('/home/vamc/frappe-bench/apps/pygapi/pygapi/info.dat')
+storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/info.dat')
 credentials = storage.get()
 if credentials is None or credentials.invalid == True:
   credentials = tools.run_flow(FLOW, storage)
@@ -52,7 +52,7 @@ people_service = build(serviceName='people', version='v1', http=http)
 
 # fetch all contacts
 def fetch_contacts():
-  contacts_query = people_service.people().connections().list(resourceName='people/me', personFields='names,phoneNumbers')
+  contacts_query = people_service.people().connections().list(resourceName='people/me', pageSize=2000, personFields='names,phoneNumbers')
   contacts_result = contacts_query.execute()
   contacts = []
   for contact in contacts_result.get("connections"):
@@ -79,6 +79,7 @@ def get_contact_by_number(number):
 # contact = {"name":"Contact Name","mobile":"1234567890"}
 # create_contact(contact)
 def create_contact(contact):
+  #gist_write("in create_contact")
   contactToCreate = {"names":[{"givenName":contact.get("name")}],"phoneNumbers":[{"value":contact.get("mobile")}]}
   createdContact = people_service.people().createContact(body=contactToCreate).execute()
   return createdContact
@@ -89,6 +90,7 @@ def create_contact(contact):
 # contact = {"name":"Updated Name","mobile":"1234567890"}
 # update_contact(contact)
 def update_contact(contact):
+  #gist_write("in update_contact")
   contact_result = get_contact_by_number(contact.get("mobile"))
   if contact_result:
     etag = contact_result.get("etag")
