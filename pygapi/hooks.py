@@ -89,23 +89,23 @@ app_license = "license.txt"
 # Scheduled Tasks
 # ---------------
 
-# scheduler_events = {
-# 	"all": [
-# 		"pygapi.tasks.all"
-# 	],
-# 	"daily": [
-# 		"pygapi.tasks.daily"
-# 	],
-# 	"hourly": [
-# 		"pygapi.tasks.hourly"
-# 	],
-# 	"weekly": [
-# 		"pygapi.tasks.weekly"
-# 	]
-# 	"monthly": [
-# 		"pygapi.tasks.monthly"
-# 	]
-# }
+scheduler_events = {
+	"all": [
+		"pygapi.pygcontacts.export_leads_to_google_contacts"
+	],
+	# "daily": [
+	# 	"pygapi.tasks.daily"
+	# ],
+	# "hourly": [
+	# 	"pygapi.tasks.hourly"
+	# ],
+	# "weekly": [
+	# 	"pygapi.tasks.weekly"
+	# ]
+	# "monthly": [
+	# 	"pygapi.tasks.monthly"
+	# ]
+}
 
 # Testing
 # -------

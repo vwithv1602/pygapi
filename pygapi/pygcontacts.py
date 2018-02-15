@@ -5,6 +5,8 @@ from oauth2client.client import OAuth2WebServerFlow
 from oauth2client import tools
 from globalconstants import *
 import frappe
+from .vlog import vwrite
+from datetime import datetime
 
 # Note. If you need to change permissions like scope, you need to delete info.dat file to update the new permissions
 
@@ -26,10 +28,12 @@ import frappe
 # Go to the Google API Console, open your application's
 # credentials page, and copy the client ID and client secret.
 # Then paste them into the following code.
-google_settings = frappe.get_doc("Google Account Setup")
+# google_settings = frappe.get_doc("Google Account Setup")
 FLOW = OAuth2WebServerFlow(
-    client_id=google_settings.client_id,
-    client_secret=google_settings.client_secret,
+    # client_id=google_settings.client_id,
+    # client_secret=google_settings.client_secret,
+    client_id=YOUR_CLIENT_ID,
+    client_secret=YOUR_CLIENT_SECRET,
     scope=YOUR_SCOPE,
     user_agent=YOUR_APPLICATION_NAME_AND_APPLICATION_VERSION)
 
@@ -56,17 +60,28 @@ def fetch_contacts():
   contacts_result = contacts_query.execute()
   contacts = []
   for contact in contacts_result.get("connections"):
-    name = contact.get("names")[0].get("displayName")
-    mobile = contact.get("phoneNumbers")[0].get("canonicalForm")
-    contacts.append({"resourceName":contact.get("resourceName"),"name":name,"mobile":mobile})
+    try:
+      name = contact.get("names")[0].get("displayName")
+      mobile = contact.get("phoneNumbers")[0].get("canonicalForm")
+      if not mobile:
+        mobile = contact.get("phoneNumbers")[0].get("value")
+      contacts.append({"resourceName":contact.get("resourceName"),"name":name,"mobile":mobile})
+    except Exception, e:
+      exceptionflag = 1
+      # vwrite("Exception raised in fetch_contacts")
+      # vwrite(e.message)
+      # vwrite(contact)
   return contacts
 
 # fetch contact by mobile number
 def get_contact_by_number(number):
+  number = number[-10:]
   contacts = fetch_contacts()
   resourceName = None
   for contact in contacts:
-    mobile_formatted = contact.get("mobile")[3:len(contact.get("mobile"))]
+    mobile_formatted = ""
+    if contact.get("mobile"):
+      mobile_formatted = contact.get("mobile")[-10:]
     if(contact.get("mobile")==number or mobile_formatted==number):
       resourceName = contact.get("resourceName")
   if resourceName:
@@ -97,3 +112,33 @@ def update_contact(contact):
     updatedContact = people_service.people().updateContact(resourceName=resourceName,updatePersonFields="names",body=contactToUpdate).execute()
   return updatedContact
 
+@frappe.whitelist()
+def create_contact_if_not_exists(mobile,lead_name=None):
+  if not lead_name:
+    lead_name = mobile
+  contact = get_contact_by_number(mobile)
+  if not contact:
+    new_contact = {"name":lead_name,"mobile":mobile}
+    try:
+      create_contact(new_contact)
+    except Exception, e:
+      exceptionflag = 1
+      # vwrite("Exception raised in create_contact_if_not_exists for contact: %s (%s)" % (mobile,lead_name))
+      # vwrite(e.message)
+
+# export_leads_to_google_contacts - Create google contact for leads (past 1 day)
+def export_leads_to_google_contacts():
+  latest_leads_query = """ select lead_name,mobile_no from `tabLead` where creation > NOW() - INTERVAL 2 DAY """
+  for lead in frappe.db.sql(latest_leads_query, as_dict=1):
+    lead_name = lead.get("lead_name")
+    mobile = lead.get("mobile_no")
+    if mobile:
+      create_contact_if_not_exists(mobile,lead_name)
+  # For each lead: call create_contact_if_not_exists(mobile,lead_name)
+
+@frappe.whitelist()
+def test():
+  vwrite("In test")
+  contact = get_contact_by_number("07013011867")
+  vwrite(contact)
+  return contact
