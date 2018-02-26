@@ -50,6 +50,51 @@ http = credentials.authorize(http)
 # Build a service object for interacting with the API.
 people_service = build(serviceName='people', version='v1', http=http)
 
+# create/update queued contacts in google
+def process_queued_contacts():
+  google_peoples_api_limit = 90
+  queued_contacts = frappe.get_all('Queue Google Contacts',
+		filters={"status":"queued"},
+		fields = ["name", "contact_name", "mobile", "action", "status"],
+    order_by = 'modified asc',
+		limit_page_length = google_peoples_api_limit)
+  for queued_contact in queued_contacts:
+    if queued_contact.get("action") == 'create':
+      contactToCreate = {"names":[{"givenName":queued_contact.get("contact_name")}],"phoneNumbers":[{"value":queued_contact.get("mobile")}]}
+      createdContact = people_service.people().createContact(body=contactToCreate).execute()
+    else:
+      contact_result = get_contact_by_number(queued_contact.get("mobile"))
+      if contact_result:
+        etag = contact_result.get("etag")
+        resourceName = contact_result.get("resourceName")
+        contactToUpdate = {"names":[{"givenName":queued_contact.get("name")}],"etag":etag}
+        updatedContact = people_service.people().updateContact(resourceName=resourceName,updatePersonFields="names",body=contactToUpdate).execute()
+    
+    # update queued contact status to completed
+    if frappe.db.get_value("Queue Google Contacts", queued_contact.get("name"), "status"):
+      complete_query = """ update `tabQueue Google Contacts` set status='completed' where name='%s'""" % queued_contact.get("name")
+      frappe.db.sql(complete_query)
+    else:
+      vwrite("contact doesn't exist")
+
+# add contact to queue
+def queue_contact(contact,action):
+  try:
+    queue_rec = frappe.get_doc({
+			"doctype": "Queue Google Contacts",
+			"contact_name" : contact.get("name"),
+			"mobile": contact.get("mobile"),
+			"action": action
+		})
+    queue_rec.flags.ignore_mandatory = True
+    queue_rec.insert()
+    frappe.db.commit()
+
+  except Exception, e:
+    vwrite("Exception raised in queue_contact for %s" % action)
+    vwrite(e.message)
+    vwrite(contact)
+
 # fetch all contacts
 def fetch_contacts():
   contacts_query = people_service.people().connections().list(resourceName='people/me', pageSize=2000, personFields='names,phoneNumbers')
@@ -68,12 +113,14 @@ def fetch_contacts():
 
 # fetch contact by mobile number
 def get_contact_by_number(number):
+  number = number[-10:]
   contacts = fetch_contacts()
   resourceName = None
   for contact in contacts:
     mobile_formatted = ""
     if contact.get("mobile"):
-      mobile_formatted = contact.get("mobile")[3:len(contact.get("mobile"))]
+      mobile_formatted = contact.get("mobile")[-10:]
+      # mobile_formatted = contact.get("mobile")[3:len(contact.get("mobile"))]
     if(contact.get("mobile")==number or mobile_formatted==number):
       resourceName = contact.get("resourceName")
   if resourceName:
@@ -87,9 +134,8 @@ def get_contact_by_number(number):
 # create_contact(contact)
 def create_contact(contact):
   #gist_write("in create_contact")
-  contactToCreate = {"names":[{"givenName":contact.get("name")}],"phoneNumbers":[{"value":contact.get("mobile")}]}
-  createdContact = people_service.people().createContact(body=contactToCreate).execute()
-  return createdContact
+  queue_contact(contact,"create")
+  return True
 
 # update contact (condition: where mobile='%s')
 # will update contact based on mobile number
@@ -97,14 +143,8 @@ def create_contact(contact):
 # contact = {"name":"Updated Name","mobile":"1234567890"}
 # update_contact(contact)
 def update_contact(contact):
-  #gist_write("in update_contact")
-  contact_result = get_contact_by_number(contact.get("mobile"))
-  if contact_result:
-    etag = contact_result.get("etag")
-    resourceName = contact_result.get("resourceName")
-    contactToUpdate = {"names":[{"givenName":contact.get("name")}],"etag":etag}
-    updatedContact = people_service.people().updateContact(resourceName=resourceName,updatePersonFields="names",body=contactToUpdate).execute()
-  return updatedContact
+  queue_contact(contact,"update")
+  return True
 
 @frappe.whitelist()
 def create_contact_if_not_exists(mobile,lead_name=None):

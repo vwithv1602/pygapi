@@ -106,7 +106,11 @@ app_license = "license.txt"
 # 		"pygapi.tasks.monthly"
 # 	]
 # }
-
+scheduler_events = {
+	"hourly": [
+		"pygapi.pygcontacts.process_queued_contacts"
+	]
+}
 # Testing
 # -------
 
