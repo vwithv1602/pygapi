@@ -67,7 +67,7 @@ def process_queued_contacts():
       if contact_result:
         etag = contact_result.get("etag")
         resourceName = contact_result.get("resourceName")
-        contactToUpdate = {"names":[{"givenName":queued_contact.get("name")}],"etag":etag}
+        contactToUpdate = {"names":[{"givenName":queued_contact.get("contact_name")}],"etag":etag}
         updatedContact = people_service.people().updateContact(resourceName=resourceName,updatePersonFields="names",body=contactToUpdate).execute()
     
     # update queued contact status to completed
