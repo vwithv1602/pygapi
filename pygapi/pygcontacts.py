@@ -52,7 +52,7 @@ people_service = build(serviceName='people', version='v1', http=http)
 
 # create/update queued contacts in google
 def process_queued_contacts():
-  google_peoples_api_limit = 90
+  google_peoples_api_limit = 10
   queued_contacts = frappe.get_all('Queue Google Contacts',
 		filters={"status":"queued"},
 		fields = ["name", "contact_name", "mobile", "action", "status"],
