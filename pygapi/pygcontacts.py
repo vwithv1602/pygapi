@@ -79,10 +79,14 @@ def process_queued_contacts():
 
 # add contact to queue
 def queue_contact(contact,action):
+  if contact.get("name")[-6:].upper()=='_NF_NF':
+    contact_name = contact.get("name")[:-3]
+  else:
+    contact_name = contact.get("name")
   try:
     queue_rec = frappe.get_doc({
 			"doctype": "Queue Google Contacts",
-			"contact_name" : contact.get("name"),
+			"contact_name" : contact_name,
 			"mobile": contact.get("mobile"),
 			"action": action
 		})
