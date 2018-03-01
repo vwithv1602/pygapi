@@ -79,8 +79,8 @@ def process_queued_contacts():
 
 # add contact to queue
 def queue_contact(contact,action):
-  if contact.get("name")[-6:].upper()=='_NF_NF':
-    contact_name = contact.get("name")[:-3]
+  if contact.get("name")[-3:].upper()=='_NF':
+    contact_name = contact.get("name").replace("_NF","")+"_NF"
   else:
     contact_name = contact.get("name")
   try:
