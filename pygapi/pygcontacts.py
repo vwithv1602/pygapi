@@ -65,7 +65,7 @@ def process_pre_queued_contacts():
   for pre_queued_contact in pre_queued_contacts:
     action = "create"
     for google_contact in google_contacts:
-      if(pre_queued_contact.get("mobile") == google_contact.get("mobile")[1:]):
+      if google_contact.get("mobile") and (pre_queued_contact.get("mobile") == google_contact.get("mobile")[1:]):
         action = "update"
         break
     contact = {"name":pre_queued_contact.get("contact_name"),"mobile":pre_queued_contact.get("mobile")}
@@ -157,9 +157,10 @@ def fetch_contacts():
   contacts = []
   for contact in contacts_result.get("connections"):
     try:
-      name = contact.get("names")[0].get("displayName")
-      mobile = contact.get("phoneNumbers")[0].get("canonicalForm")
-      contacts.append({"resourceName":contact.get("resourceName"),"name":name,"mobile":mobile})
+      if "names" in contact and "phoneNumbers" in contact:
+        name = contact.get("names")[0].get("displayName")
+        mobile = contact.get("phoneNumbers")[0].get("canonicalForm")
+        contacts.append({"resourceName":contact.get("resourceName"),"name":name,"mobile":mobile})
     except Exception, e:
       vwrite("Exception raised in fetch_contacts")
       vwrite(e.message)
