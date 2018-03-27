@@ -108,7 +108,8 @@ app_license = "license.txt"
 # }
 scheduler_events = {
 	"all": [
-		"pygapi.pygcontacts.process_queued_contacts"
+		"pygapi.pygcontacts.process_queued_contacts",
+		"pygapi.pygcontacts.process_pre_queued_contacts"
 	]
 }
 # Testing
