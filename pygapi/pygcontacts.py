@@ -50,7 +50,30 @@ http = credentials.authorize(http)
 # Build a service object for interacting with the API.
 people_service = build(serviceName='people', version='v1', http=http)
 
+@frappe.whitelist()
+def process_pre_queued_contacts():
+  pre_queued_contacts = frappe.get_all('Pre Queue Google Contacts',
+		filters={"status":"queued"},
+		fields = ["name", "contact_name", "mobile", "status"],
+    order_by = 'modified asc')
+  pre_queued_contacts_sql = "SELECT DISTINCT mobile, name, contact_name, status FROM `tabPre Queue Google Contacts` WHERE status='queued' group by mobile order by creation desc"
+  pre_queued_contacts = frappe.db.sql(pre_queued_contacts_sql, as_dict=1)
+  # google_contacts = fetch_contacts()
+  google_contacts = [{'mobile': u'+919733533233', 'resourceName': u'people/c9091156884755154322', 'name': u'FB-Moumita Chakraborty'}, {'mobile': u'+919592768006', 'resourceName': u'people/c9082158745730413281', 'name': u'FB-Rajesh Rolania'}, {'mobile': u'+919947621552', 'resourceName': u'people/c8656010149312834843', 'name': u'FB-VINOD P'}]
+  
+  # filter pre_queued_contacts so that it contains only single mobile number
+  
+  for pre_queued_contact in pre_queued_contacts:
+    action = "create"
+    for google_contact in google_contacts:
+      if(pre_queued_contact.get("mobile") == google_contact.get("mobile")[1:]):
+        action = "update"
+        break
+    contact = {"name":pre_queued_contact.get("contact_name"),"mobile":pre_queued_contact.get("mobile")}
+    queue_contact(contact,action)
+    
 # create/update queued contacts in google
+@frappe.whitelist()
 def process_queued_contacts():
   google_peoples_api_limit = 10
   queued_contacts = frappe.get_all('Queue Google Contacts',
@@ -76,6 +99,27 @@ def process_queued_contacts():
       frappe.db.sql(complete_query)
     else:
       vwrite("contact doesn't exist")
+
+# add contact to pre-queue
+def pre_queue_contact(contact):
+  if contact.get("name")[-3:].upper()=='_NF':
+    contact_name = contact.get("name").replace("_NF","")+"_NF"
+  else:
+    contact_name = contact.get("name")
+  try:
+    pre_queue_rec = frappe.get_doc({
+			"doctype": "Pre Queue Google Contacts",
+			"contact_name" : contact_name,
+			"mobile": contact.get("mobile")
+		})
+    pre_queue_rec.flags.ignore_mandatory = True
+    pre_queue_rec.insert()
+    frappe.db.commit()
+
+  except Exception, e:
+    vwrite("Exception raised in pre_queue_contact for %s" % contact.get("mobile"))
+    vwrite(e.message)
+    vwrite(contact)
 
 # add contact to queue
 def queue_contact(contact,action):
