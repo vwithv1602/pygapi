@@ -58,8 +58,7 @@ def process_pre_queued_contacts():
     order_by = 'modified asc')
   pre_queued_contacts_sql = "SELECT DISTINCT mobile, name, contact_name, status FROM `tabPre Queue Google Contacts` WHERE status='queued' group by mobile order by creation desc"
   pre_queued_contacts = frappe.db.sql(pre_queued_contacts_sql, as_dict=1)
-  # google_contacts = fetch_contacts()
-  google_contacts = [{'mobile': u'+919733533233', 'resourceName': u'people/c9091156884755154322', 'name': u'FB-Moumita Chakraborty'}, {'mobile': u'+919592768006', 'resourceName': u'people/c9082158745730413281', 'name': u'FB-Rajesh Rolania'}, {'mobile': u'+919947621552', 'resourceName': u'people/c8656010149312834843', 'name': u'FB-VINOD P'}]
+  google_contacts = fetch_contacts()
   
   # filter pre_queued_contacts so that it contains only single mobile number
   
@@ -71,6 +70,14 @@ def process_pre_queued_contacts():
         break
     contact = {"name":pre_queued_contact.get("contact_name"),"mobile":pre_queued_contact.get("mobile")}
     queue_contact(contact,action)
+    
+    # update pre queued contact status to completed
+    if frappe.db.get_value("Pre Queue Google Contacts", pre_queued_contact.get("name"), "status"):
+      complete_query = """ update `tabPre Queue Google Contacts` set status='completed' where name='%s'""" % pre_queued_contact.get("name")
+      frappe.db.sql(complete_query)
+    else:
+      vwrite("contact doesn't exist")
+
     
 # create/update queued contacts in google
 @frappe.whitelist()
