@@ -65,7 +65,7 @@ def process_pre_queued_contacts():
   for pre_queued_contact in pre_queued_contacts:
     action = "create"
     for google_contact in google_contacts:
-      if google_contact.get("mobile") and (pre_queued_contact.get("mobile") == google_contact.get("mobile")[1:]):
+      if google_contact.get("mobile") and (pre_queued_contact.get("mobile") == google_contact.get("mobile")[1:] or pre_queued_contact.get("mobile") == google_contact.get("mobile")[3:]):
         action = "update"
         break
     contact = {"name":pre_queued_contact.get("contact_name"),"mobile":pre_queued_contact.get("mobile")}
