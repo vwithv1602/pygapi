@@ -128,7 +128,7 @@ def process_queued_contacts():
       contactToCreate = {"names":[{"givenName":queued_contact.get("contact_name")}],"phoneNumbers":[{"value":queued_contact.get("mobile")}]}
       createdContact = people_service.people().createContact(body=contactToCreate).execute()
     else:
-      contact_result = get_contact_by_number(queued_contact.get("mobile"))
+      contact_result = get_contact_by_number(queued_contact.get("mobile"),queued_contact.get("owner"))
       if contact_result:
         etag = contact_result.get("etag")
         resourceName = contact_result.get("resourceName")
@@ -206,7 +206,7 @@ def fetch_contacts(owner="Administrator"):
   return contacts
 
 # fetch contact by mobile number
-def get_contact_by_number(number):
+def get_contact_by_number(number,owner="Administrator"):
   number = number[-10:]
   contacts = fetch_contacts()
   resourceName = None
@@ -218,6 +218,7 @@ def get_contact_by_number(number):
     if(contact.get("mobile")==number or mobile_formatted==number):
       resourceName = contact.get("resourceName")
   if resourceName:
+    people_service = get_access_to_account(owner)
     contact_query = people_service.people().get(resourceName=resourceName,personFields="names,phoneNumbers")
     contact_result = contact_query.execute()
     return contact_result
