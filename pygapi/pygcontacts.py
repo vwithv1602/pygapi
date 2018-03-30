@@ -56,7 +56,7 @@ def process_pre_queued_contacts():
 		filters={"status":"queued"},
 		fields = ["name", "contact_name", "mobile", "status"],
     order_by = 'modified asc')
-  pre_queued_contacts_sql = "SELECT DISTINCT mobile, name, contact_name, status FROM `tabPre Queue Google Contacts` WHERE status='queued' group by mobile order by creation desc"
+  pre_queued_contacts_sql = "SELECT DISTINCT mobile, name, contact_name, status, owner FROM `tabPre Queue Google Contacts` WHERE status='queued' group by mobile order by creation desc"
   pre_queued_contacts = frappe.db.sql(pre_queued_contacts_sql, as_dict=1)
   google_contacts = fetch_contacts()
   
@@ -69,7 +69,7 @@ def process_pre_queued_contacts():
         action = "update"
         break
     contact = {"name":pre_queued_contact.get("contact_name"),"mobile":pre_queued_contact.get("mobile")}
-    queue_contact(contact,action)
+    queue_contact(contact,action,pre_queued_contact.get("owner"))
     
     # update pre queued contact status to completed
     if frappe.db.get_value("Pre Queue Google Contacts", pre_queued_contact.get("name"), "status"):
@@ -108,7 +108,7 @@ def process_queued_contacts():
       vwrite("contact doesn't exist")
 
 # add contact to pre-queue
-def pre_queue_contact(contact):
+def pre_queue_contact(contact,owner="Administrator"):
   if contact.get("name")[-3:].upper()=='_NF':
     contact_name = contact.get("name").replace("_NF","")+"_NF"
   else:
@@ -117,19 +117,20 @@ def pre_queue_contact(contact):
     pre_queue_rec = frappe.get_doc({
 			"doctype": "Pre Queue Google Contacts",
 			"contact_name" : contact_name,
-			"mobile": contact.get("mobile")
+			"mobile": contact.get("mobile"),
+      "owner":owner
 		})
     pre_queue_rec.flags.ignore_mandatory = True
-    pre_queue_rec.insert()
+    pre_queue_rec.save(ignore_permissions=True)
     frappe.db.commit()
 
   except Exception, e:
     vwrite("Exception raised in pre_queue_contact for %s" % contact.get("mobile"))
-    vwrite(e.message)
+    vwrite(e)
     vwrite(contact)
 
 # add contact to queue
-def queue_contact(contact,action):
+def queue_contact(contact,action,owner="Administrator"):
   if contact.get("name")[-3:].upper()=='_NF':
     contact_name = contact.get("name").replace("_NF","")+"_NF"
   else:
@@ -139,10 +140,11 @@ def queue_contact(contact,action):
 			"doctype": "Queue Google Contacts",
 			"contact_name" : contact_name,
 			"mobile": contact.get("mobile"),
-			"action": action
+			"action": action,
+      "owner": owner
 		})
     queue_rec.flags.ignore_mandatory = True
-    queue_rec.insert()
+    queue_rec.save(ignore_permissions=True)
     frappe.db.commit()
 
   except Exception, e:
@@ -188,9 +190,9 @@ def get_contact_by_number(number):
 # usage:
 # contact = {"name":"Contact Name","mobile":"1234567890"}
 # create_contact(contact)
-def create_contact(contact):
+def create_contact(contact,owner):
   #gist_write("in create_contact")
-  queue_contact(contact,"create")
+  queue_contact(contact,"create",owner)
   return True
 
 # update contact (condition: where mobile='%s')
@@ -198,19 +200,19 @@ def create_contact(contact):
 # usage:
 # contact = {"name":"Updated Name","mobile":"1234567890"}
 # update_contact(contact)
-def update_contact(contact):
-  queue_contact(contact,"update")
+def update_contact(contact,owner):
+  queue_contact(contact,"update",owner)
   return True
 
 @frappe.whitelist()
-def create_contact_if_not_exists(mobile,lead_name=None):
+def create_contact_if_not_exists(mobile,lead_name=None,owner="Administrator"):
   if not lead_name:
     lead_name = mobile
   contact = get_contact_by_number(mobile)
   if not contact:
     new_contact = {"name":lead_name,"mobile":mobile}
     try:
-      create_contact(new_contact)
+      create_contact(new_contact,owner)
     except Exception, e:
       vwrite("Exception raised in create_contact_if_not_exists for contact: %s (%s)" % (mobile,lead_name))
       vwrite(e.message)

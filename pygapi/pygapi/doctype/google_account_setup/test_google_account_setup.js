@@ -2,15 +2,15 @@
 // rename this file from _test_[name] to test_[name] to activate
 // and remove above this line
 
-QUnit.test("test: Pre Queue Google Contacts", function (assert) {
+QUnit.test("test: Google Account Setup", function (assert) {
 	let done = assert.async();
 
 	// number of asserts
 	assert.expect(1);
 
 	frappe.run_serially([
-		// insert a new Pre Queue Google Contacts
-		() => frappe.tests.make('Pre Queue Google Contacts', [
+		// insert a new Google Account Setup
+		() => frappe.tests.make('Google Account Setup', [
 			// values to be set
 			{key: 'value'}
 		]),
