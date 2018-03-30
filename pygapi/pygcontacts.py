@@ -28,8 +28,11 @@ from .vlog import vwrite
 # Then paste them into the following code.
 google_settings = frappe.get_doc("Google Account Setup")
 FLOW = OAuth2WebServerFlow(
-    client_id=google_settings.client_id,
-    client_secret=google_settings.client_secret,
+    # client_id=google_settings.client_id,
+    # client_secret=google_settings.client_secret,
+    client_id="686828027298-s4q9dgv7muifiivn323v4up28cqopuhr.apps.googleusercontent.com", # visheshhanda
+    client_secret="WZ3biLU9yWtJAKcMKiu4GqOd",
+    
     scope=YOUR_SCOPE,
     user_agent=YOUR_APPLICATION_NAME_AND_APPLICATION_VERSION)
 
@@ -37,7 +40,7 @@ FLOW = OAuth2WebServerFlow(
 # installed application flow. The Storage object will ensure that,
 # if successful, the good Credentials will get written back to a
 # file.
-storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/info.dat')
+storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/visheshhanda.dat')
 credentials = storage.get()
 if credentials is None or credentials.invalid == True:
   credentials = tools.run_flow(FLOW, storage)
@@ -51,32 +54,63 @@ http = credentials.authorize(http)
 people_service = build(serviceName='people', version='v1', http=http)
 
 @frappe.whitelist()
+def get_access_to_account(owner=None):
+  # get default google account for the owner
+  pre_queued_contacts = frappe.get_all('ERPNext Mobile Addon Users',
+		filters={"username":owner},
+		fields = ["google_account"],
+    order_by = 'modified desc')
+  if len(pre_queued_contacts) > 0:
+    account = pre_queued_contacts[0].get("google_account")
+  else:
+    account = "sales@usedyetnew.com"
+  if account == "visheshhanda@usedyetnew.com":
+    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/visheshhanda.dat')
+  elif account == "care@usedyetnew.com":
+    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/care.dat')
+  elif account == "sales@usedyetnew.com":
+    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/sales.dat')
+  elif account == "marketing@usedyetnew.com":
+    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/marketing.dat')
+  credentials = storage.get()
+  if credentials is None or credentials.invalid == True:
+    credentials = tools.run_flow(FLOW, storage)
+  http = httplib2.Http()
+  http = credentials.authorize(http)
+  people_service = build(serviceName='people', version='v1', http=http)
+  return people_service
+
+@frappe.whitelist()
 def process_pre_queued_contacts():
   pre_queued_contacts = frappe.get_all('Pre Queue Google Contacts',
 		filters={"status":"queued"},
 		fields = ["name", "contact_name", "mobile", "status"],
     order_by = 'modified asc')
-  pre_queued_contacts_sql = "SELECT DISTINCT mobile, name, contact_name, status, owner FROM `tabPre Queue Google Contacts` WHERE status='queued' group by mobile order by creation desc"
-  pre_queued_contacts = frappe.db.sql(pre_queued_contacts_sql, as_dict=1)
-  google_contacts = fetch_contacts()
-  
-  # filter pre_queued_contacts so that it contains only single mobile number
-  
-  for pre_queued_contact in pre_queued_contacts:
-    action = "create"
-    for google_contact in google_contacts:
-      if google_contact.get("mobile") and (pre_queued_contact.get("mobile") == google_contact.get("mobile")[1:] or pre_queued_contact.get("mobile") == google_contact.get("mobile")[3:]):
-        action = "update"
-        break
-    contact = {"name":pre_queued_contact.get("contact_name"),"mobile":pre_queued_contact.get("mobile")}
-    queue_contact(contact,action,pre_queued_contact.get("owner"))
+  # for selective google account access, filtering by owner
+  owner_sql = "SELECT DISTINCT owner FROM `tabPre Queue Google Contacts` WHERE status='queued' group by owner order by creation desc"
+  owner_res = frappe.db.sql(owner_sql, as_dict=1)
+  for owner_obj in owner_res:
+    pre_queued_contacts_sql = "SELECT DISTINCT mobile, name, contact_name, status, owner FROM `tabPre Queue Google Contacts` WHERE status='queued' and owner='%s' group by mobile order by creation desc" % owner_obj.get("owner")
+    pre_queued_contacts = frappe.db.sql(pre_queued_contacts_sql, as_dict=1)
+    google_contacts = fetch_contacts(owner_obj.get("owner"))
     
-    # update pre queued contact status to completed
-    if frappe.db.get_value("Pre Queue Google Contacts", pre_queued_contact.get("name"), "status"):
-      complete_query = """ update `tabPre Queue Google Contacts` set status='completed' where name='%s'""" % pre_queued_contact.get("name")
-      frappe.db.sql(complete_query)
-    else:
-      vwrite("contact doesn't exist")
+    # filter pre_queued_contacts so that it contains only single mobile number
+    
+    for pre_queued_contact in pre_queued_contacts:
+      action = "create"
+      for google_contact in google_contacts:
+        if google_contact.get("mobile") and (pre_queued_contact.get("mobile") == google_contact.get("mobile")[1:] or pre_queued_contact.get("mobile") == google_contact.get("mobile")[3:]):
+          action = "update"
+          break
+      contact = {"name":pre_queued_contact.get("contact_name"),"mobile":pre_queued_contact.get("mobile")}
+      queue_contact(contact,action,pre_queued_contact.get("owner"))
+      
+      # update pre queued contact status to completed
+      if frappe.db.get_value("Pre Queue Google Contacts", pre_queued_contact.get("name"), "status"):
+        complete_query = """ update `tabPre Queue Google Contacts` set status='completed' where name='%s'""" % pre_queued_contact.get("name")
+        frappe.db.sql(complete_query)
+      else:
+        vwrite("contact doesn't exist")
 
     
 # create/update queued contacts in google
@@ -85,10 +119,11 @@ def process_queued_contacts():
   google_peoples_api_limit = 10
   queued_contacts = frappe.get_all('Queue Google Contacts',
 		filters={"status":"queued"},
-		fields = ["name", "contact_name", "mobile", "action", "status"],
+		fields = ["name", "contact_name", "mobile", "action", "status", "owner"],
     order_by = 'modified asc',
 		limit_page_length = google_peoples_api_limit)
   for queued_contact in queued_contacts:
+    people_service = get_access_to_account(queued_contact.get("owner"))
     if queued_contact.get("action") == 'create':
       contactToCreate = {"names":[{"givenName":queued_contact.get("contact_name")}],"phoneNumbers":[{"value":queued_contact.get("mobile")}]}
       createdContact = people_service.people().createContact(body=contactToCreate).execute()
@@ -153,7 +188,8 @@ def queue_contact(contact,action,owner="Administrator"):
     vwrite(contact)
 
 # fetch all contacts
-def fetch_contacts():
+def fetch_contacts(owner="Administrator"):
+  people_service = get_access_to_account(owner)
   contacts_query = people_service.people().connections().list(resourceName='people/me', pageSize=2000, personFields='names,phoneNumbers')
   contacts_result = contacts_query.execute()
   contacts = []
