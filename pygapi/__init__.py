@@ -11,6 +11,16 @@ from vlog import vwrite
 def lead_hook_create__google_contact(lead,method):
     lead_name = lead.__dict__.get("lead_name")
     mobile_no = lead.__dict__.get("mobile_no")
+    status = lead.__dict__.get("status")
+    prefix_name = ""
+    if status=="Open":
+        prefix_name = "New - "
+    else:
+        prefix_name = "%s - " % status
+    interested_in = lead.__dict__.get("interested_in")
+    if interested_in:
+        prefix_name = "%s%s - " % (prefix_name,interested_in)
+    lead_name = "%s%s" %(prefix_name,lead_name)
     owner = lead.__dict__.get("owner")
     from pygcontacts import pre_queue_contact
     contact = {
