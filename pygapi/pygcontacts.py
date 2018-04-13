@@ -128,6 +128,14 @@ def clean_queue():
     duplicate_result = frappe.db.sql(duplicate_sql)
     delete_sql = """ delete from `tabQueue Google Contacts` where name <> '%s' and action='update' and mobile='%s'""" %(duplicate_result[0][0],record[0])
     frappe.db.sql(delete_sql)
+  # clearing prequeue
+  clean_create_sql = """ select distinct mobile from `tabPre Queue Google Contacts` order by creation desc """
+  clean_create_res = frappe.db.sql(clean_create_sql)
+  for record in clean_create_res:
+    duplicate_sql = """ select name,creation from  `tabPre Queue Google Contacts` where mobile='%s' order by creation desc """ % record
+    duplicate_result = frappe.db.sql(duplicate_sql)
+    delete_sql = """ delete from `tabPre Queue Google Contacts` where name <> '%s' and mobile='%s'""" %(duplicate_result[0][0],record[0])
+    frappe.db.sql(delete_sql)
 
 
 # create/update queued contacts in google
