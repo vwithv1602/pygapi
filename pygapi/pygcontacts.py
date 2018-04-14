@@ -113,11 +113,23 @@ def process_pre_queued_contacts():
         vwrite("contact doesn't exist")
 
 # clean_queue - removes duplicates in `tabQueue Google Contacts`
+@frappe.whitelist()
 def clean_queue():
-  clean_queue_sql = """ DELETE t2 from `tabQueue Google Contacts` t1 join `tabQueue Google Contacts` t2 on (t2.mobile=t1.mobile and t2.creation<t1.creation and t2.action=t1.action) """
-  clean_create_res = frappe.db.sql(clean_queue_sql)
-  clean_pre_queue_sql = """ DELETE t2 from `tabPre Queue Google Contacts` t1 join `tabPre Queue Google Contacts` t2 on (t2.mobile=t1.mobile and t2.creation<t1.creation) """
-  clean_pre_create_res = frappe.db.sql(clean_pre_queue_sql)
+  max_date_sql = """ select creation from `tabQueue Google Contacts` where status='queued' order by creation asc limit 1 """
+  max_date_res = frappe.db.sql(max_date_sql)
+  if len(max_date_res):
+    from datetime import datetime
+    max_date = max_date_res[0][0].strftime("%Y-%m-%d %H:%M:%S")
+    clean_queue_sql = """ delete t2 from `tabQueue Google Contacts` t1 join `tabQueue Google Contacts` t2 on (t2.mobile=t1.mobile and t2.creation<t1.creation and t2.action=t1.action and t2.creation > '%s' and t2.status='queued')  """ % max_date
+    clean_create_res = frappe.db.sql(clean_queue_sql)
+  max_date_sql = """ select creation from `tabPre Queue Google Contacts` where status='queued' order by creation asc limit 1 """
+  max_date_res = frappe.db.sql(max_date_sql)
+  if len(max_date_res):
+    from datetime import datetime
+    max_date = max_date_res[0][0].strftime("%Y-%m-%d %H:%M:%S")
+    clean_queue_sql = """ delete t2 from `tabPre Queue Google Contacts` t1 join `tabPre Queue Google Contacts` t2 on (t2.mobile=t1.mobile and t2.creation<t1.creation and  t2.creation > '%s' and t2.status='queued')  """ % max_date
+    clean_create_res = frappe.db.sql(clean_queue_sql)
+
   # clean_create_sql = """ select distinct mobile from `tabQueue Google Contacts` where action='create' and status='queued'  order by creation desc limit 100 """
   # clean_create_res = frappe.db.sql(clean_create_sql)
   # for record in clean_create_res:
