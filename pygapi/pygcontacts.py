@@ -115,49 +115,23 @@ def process_pre_queued_contacts():
 # clean_queue - removes duplicates in `tabQueue Google Contacts`
 @frappe.whitelist()
 def clean_queue():
-  max_date_sql = """ select creation from `tabQueue Google Contacts` where status='queued' order by creation asc limit 1 """
-  max_date_res = frappe.db.sql(max_date_sql)
-  if len(max_date_res):
-    from datetime import datetime
-    max_date = max_date_res[0][0].strftime("%Y-%m-%d %H:%M:%S")
-    clean_queue_sql = """ delete t2 from `tabQueue Google Contacts` t1 join `tabQueue Google Contacts` t2 on (t2.mobile=t1.mobile and t2.creation<t1.creation and t2.action=t1.action and t2.creation > '%s' and t2.status='queued')  """ % max_date
-    clean_create_res = frappe.db.sql(clean_queue_sql)
-  max_date_sql = """ select creation from `tabPre Queue Google Contacts` where status='queued' order by creation asc limit 1 """
-  max_date_res = frappe.db.sql(max_date_sql)
-  if len(max_date_res):
-    from datetime import datetime
-    max_date = max_date_res[0][0].strftime("%Y-%m-%d %H:%M:%S")
-    clean_queue_sql = """ delete t2 from `tabPre Queue Google Contacts` t1 join `tabPre Queue Google Contacts` t2 on (t2.mobile=t1.mobile and t2.creation<t1.creation and  t2.creation > '%s' and t2.status='queued')  """ % max_date
-    clean_create_res = frappe.db.sql(clean_queue_sql)
-
-  # clean_create_sql = """ select distinct mobile from `tabQueue Google Contacts` where action='create' and status='queued'  order by creation desc limit 100 """
-  # clean_create_res = frappe.db.sql(clean_create_sql)
-  # for record in clean_create_res:
-  #   duplicate_sql = """ select name,creation from  `tabQueue Google Contacts` where action='create' and mobile='%s' and status='queued' order by creation desc """ % record
-  #   duplicate_result = frappe.db.sql(duplicate_sql)
-  #   delete_sql = """ delete from `tabQueue Google Contacts` where name <> '%s' and action='create' and mobile='%s'""" %(duplicate_result[0][0],record[0])
-  #   frappe.db.sql(delete_sql)
-  # clean_update_sql = """ select distinct mobile from `tabQueue Google Contacts` where action='update' and status='queued' order by creation desc """
-  # clean_update_res = frappe.db.sql(clean_update_sql)
-  # for record in clean_update_res:
-  #   duplicate_sql = """ select name,creation from  `tabQueue Google Contacts` where action='update' and mobile='%s' and status='queued' order by creation desc """ % record
-  #   duplicate_result = frappe.db.sql(duplicate_sql)
-  #   delete_sql = """ delete from `tabQueue Google Contacts` where name <> '%s' and action='update' and mobile='%s'""" %(duplicate_result[0][0],record[0])
-  #   frappe.db.sql(delete_sql)
-  # # clearing prequeue
-  # clean_create_sql = """ select distinct mobile from `tabPre Queue Google Contacts` where status='queued' order by creation desc """
-  # clean_create_res = frappe.db.sql(clean_create_sql)
-  # for record in clean_create_res:
-  #   duplicate_sql = """ select name,creation from  `tabPre Queue Google Contacts` where mobile='%s' and status='queued' order by creation desc """ % record
-  #   duplicate_result = frappe.db.sql(duplicate_sql)
-  #   delete_sql = """ delete from `tabPre Queue Google Contacts` where name <> '%s' and mobile='%s'""" %(duplicate_result[0][0],record[0])
-  #   frappe.db.sql(delete_sql)
+  create_delete_sql = """ delete `tabQueue Google Contacts` from `tabQueue Google Contacts` inner join (select max(creation) as lastcreation, mobile from `tabQueue Google Contacts` group by mobile having count(*) > 1) duplic on duplic.mobile = `tabQueue Google Contacts`.mobile where `tabQueue Google Contacts`.creation < duplic.lastcreation and `tabQueue Google Contacts`.action='create' """
+  try:
+    create_delete_res = frappe.db.sql(create_delete_sql)
+  except Exception,e:
+    vwrite("Exception raised in clean_queue - create_delete_sql: " + create_delete_sql)
+  update_delete_sql = """delete `tabQueue Google Contacts` from `tabQueue Google Contacts` inner join (select max(creation) as lastcreation, mobile from `tabQueue Google Contacts` group by mobile having count(*) > 1) duplic on duplic.mobile = `tabQueue Google Contacts`.mobile where `tabQueue Google Contacts`.creation < duplic.lastcreation and `tabQueue Google Contacts`.action='update' """
+  try:
+    update_delete_res = frappe.db.sql(update_delete_sql)
+  except Exception,e:
+    vwrite("Exception raised in clean_queue - update_delete_sql: " + update_delete_sql)
+  
 
 
 # create/update queued contacts in google
 @frappe.whitelist()
 def process_queued_contacts():
-  #clean_queue()
+  clean_queue()
   google_peoples_api_limit = 10
   queued_contacts = frappe.get_all('Queue Google Contacts',
 		filters={"status":"queued"},
