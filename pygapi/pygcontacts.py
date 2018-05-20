@@ -157,7 +157,7 @@ def clean_queue():
 # create/update queued contacts in google
 @frappe.whitelist()
 def process_queued_contacts():
-  clean_queue()
+  #clean_queue()
   google_peoples_api_limit = 10
   queued_contacts = frappe.get_all('Queue Google Contacts',
 		filters={"status":"queued"},
