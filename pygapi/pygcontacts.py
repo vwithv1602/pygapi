@@ -62,7 +62,7 @@ def get_access_to_account(owner=None):
   else:
     account = "email@domain.com"
   if account == "email@domain.com":
-    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/info.dat')
+    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/info.dat') 
   credentials = storage.get()
   if credentials is None or credentials.invalid == True:
     credentials = tools.run_flow(FLOW, storage)
