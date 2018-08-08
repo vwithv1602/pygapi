@@ -28,11 +28,8 @@ from .vlog import vwrite
 # Then paste them into the following code.
 google_settings = frappe.get_doc("Google Account Setup")
 FLOW = OAuth2WebServerFlow(
-    # client_id=google_settings.client_id,
-    # client_secret=google_settings.client_secret,
-    client_id="686828027298-s4q9dgv7muifiivn323v4up28cqopuhr.apps.googleusercontent.com", # visheshhanda
-    client_secret="WZ3biLU9yWtJAKcMKiu4GqOd",
-    
+    client_id=google_settings.client_id,
+    client_secret=google_settings.client_secret,    
     scope=YOUR_SCOPE,
     user_agent=YOUR_APPLICATION_NAME_AND_APPLICATION_VERSION)
 
