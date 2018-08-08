@@ -209,6 +209,8 @@ def fetch_contacts(owner="Administrator"):
   contacts_query = people_service.people().connections().list(resourceName='people/me', pageSize=2000, personFields='names,phoneNumbers')
   contacts_result = contacts_query.execute()
   contacts = []
+  if not contacts_result:
+    return contacts
   for contact in contacts_result.get("connections"):
     try:
       if "names" in contact and "phoneNumbers" in contact:
