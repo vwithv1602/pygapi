@@ -28,11 +28,8 @@ from .vlog import vwrite
 # Then paste them into the following code.
 google_settings = frappe.get_doc("Google Account Setup")
 FLOW = OAuth2WebServerFlow(
-    # client_id=google_settings.client_id,
-    # client_secret=google_settings.client_secret,
-    client_id="686828027298-s4q9dgv7muifiivn323v4up28cqopuhr.apps.googleusercontent.com", # visheshhanda
-    client_secret="WZ3biLU9yWtJAKcMKiu4GqOd",
-    
+    client_id=google_settings.client_id,
+    client_secret=google_settings.client_secret,    
     scope=YOUR_SCOPE,
     user_agent=YOUR_APPLICATION_NAME_AND_APPLICATION_VERSION)
 
@@ -63,15 +60,9 @@ def get_access_to_account(owner=None):
   if len(pre_queued_contacts) > 0:
     account = pre_queued_contacts[0].get("google_account")
   else:
-    account = "sales@usedyetnew.com"
-  if account == "visheshhanda@usedyetnew.com":
-    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/visheshhanda.dat')
-  elif account == "care@usedyetnew.com":
-    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/care.dat')
-  elif account == "sales@usedyetnew.com":
-    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/sales.dat')
-  elif account == "marketing@usedyetnew.com":
-    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/marketing.dat')
+    account = "email@domain.com"
+  if account == "email@domain.com":
+    storage = Storage('/home/frappe/frappe-bench/apps/pygapi/pygapi/info.dat')
   credentials = storage.get()
   if credentials is None or credentials.invalid == True:
     credentials = tools.run_flow(FLOW, storage)
